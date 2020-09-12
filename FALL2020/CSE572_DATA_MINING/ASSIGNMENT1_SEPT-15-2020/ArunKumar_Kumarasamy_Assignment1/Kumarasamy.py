@@ -8,4 +8,8 @@ autoModeDf = df.loc[df['Date_Time'] >= autoModeStartDate]
 manualModeDf = df.loc[df['Date_Time'] < autoModeStartDate]
 print('automode dataset:', autoModeDf.shape)
 print('manualmode dataset:', manualModeDf.shape)
+autoModeDateGrp = (autoModeDf['Date_Time'].dt.floor('d').value_counts().rename_axis('Date').reset_index(name='Count'))
+manualModeDateGrp = (manualModeDf['Date_Time'].dt.floor('d').value_counts().rename_axis('Date').reset_index(name='Count'))
 
+autoModeDateGrp.to_csv('AutoModeDayCount.csv')
+manualModeDateGrp.to_csv('ManualModeDayCount.csv')  
