@@ -17,7 +17,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         TextView tv = (TextView)findViewById(R.id.textView);
-        tv.setText("This is the first screen");
+        tv.setText("This is the first screen Test 1 Android studio in windows");
 
         Button buttonOne = (Button)findViewById(R.id.button);
 

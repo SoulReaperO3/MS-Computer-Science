@@ -1,11 +1,17 @@
 package com.example.androidhelloworldthursday;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraManager;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Environment;
+import android.os.StrictMode;
 import android.provider.MediaStore;
+import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.PrecomputedText;
@@ -51,6 +57,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int VIDEO_CAPTURE = 101;
     private Uri fileUri;
+    private String mCameraId;
+    private CameraManager mCameraManager;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -63,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         bt1.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.M)
             @Override
             public void onClick(View view) {
                 startRecording();
@@ -89,6 +98,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 VideoView vv2 = (VideoView)findViewById(R.id.videoView);
+                vv2.setVideoURI(fileUri);
                 vv2.start();
             }
         });
@@ -315,7 +325,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(String text){
             VideoView vv = (VideoView) findViewById(R.id.videoView);
-            vv.setVideoPath(Environment.getExternalStorageDirectory()+"/my_folder/Action1.mp4");
+            vv.setVideoPath(Environment.getExternalStorageDirectory()+"myvideo.mp4");
             vv.start();
             Button bt4 = (Button)findViewById(R.id.button3);
             bt4.setEnabled(true);
@@ -323,19 +333,38 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     public void startRecording()
     {
         File mediaFile = new
                 File(Environment.getExternalStorageDirectory().getAbsolutePath()
                 + "/myvideo.mp4");
+        StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+        StrictMode.setVmPolicy(builder.build());
 
+        boolean isFlashAvailable = getApplicationContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
 
+        if(!isFlashAvailable) {
+            Toast.makeText(getApplicationContext(), "error flash", Toast.LENGTH_LONG).show();
+        }
 
+        mCameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
 
+        try {
+            mCameraId = mCameraManager.getCameraIdList()[0];
+        } catch (CameraAccessException  e){
+            e.printStackTrace();
+        }
+
+        try {
+            mCameraManager.setTorchMode(mCameraId,  true);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+
+        fileUri = Uri.fromFile(mediaFile);
         Intent intent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
-        intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT,5);
-         fileUri = Uri.fromFile(mediaFile);
-
+        intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT,45);
         intent.putExtra(MediaStore.EXTRA_OUTPUT, fileUri);
         startActivityForResult(intent, VIDEO_CAPTURE);
     }
