@@ -1,15 +1,27 @@
 package com.example.symmonitor;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.StrictMode;
+import android.provider.MediaStore;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
+
+import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -23,13 +35,18 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        TextView heartRateTextView = (TextView) findViewById(R.id.heartRateTextView);
+        TextView respRateTextView = (TextView) findViewById(R.id.respRateTextView);
+        heartRateTextView.setText("");
+        respRateTextView.setText("");
+
         Button symptomsButton = (Button) findViewById(R.id.symptoms);
         Button uploadSignsButton = (Button) findViewById(R.id.uploadSigns);
         Button measureHeartRateButton = (Button) findViewById(R.id.measureHeartRate);
         Button measureRespRateButton = (Button) findViewById(R.id.measureRespRate);
 
         if(!hasCamera()){
-            bt1.setEnabled(false);
+            measureHeartRateButton.setEnabled(false);
         }
 
         measureHeartRateButton.setOnClickListener(new View.OnClickListener() {
@@ -40,39 +57,88 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button bt2 = (Button) findViewById(R.id.button4Act1);
-
-        bt2.setOnClickListener(new View.OnClickListener() {
+        measureRespRateButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                DownloadTask dw1 = new DownloadTask();
-                Toast.makeText(getApplicationContext(),"Running Background Task", Toast.LENGTH_LONG).show();
-                dw1.execute();
-
+               Intent startSenseService = new Intent(MainActivity.this, AccelSensorHandler.class);
+               startService(startSenseService);
             }
         });
 
-        Button bt3 = (Button)findViewById(R.id.button3);
-
-        bt3.setEnabled(false);
-
-        bt3.setOnClickListener(new View.OnClickListener() {
+        symptomsButton.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.M)
             @Override
             public void onClick(View view) {
-                VideoView vv2 = (VideoView)findViewById(R.id.videoView);
-                vv2.setVideoURI(fileUri);
-                vv2.start();
+                Intent startSymptomLogging = new Intent(MainActivity.this, SymptomLoggingPage.class);
+                startActivity(startSymptomLogging);
             }
         });
 
-        Button bt5 = (Button)findViewById(R.id.button4);
-        bt5.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                UploadTask up1 = new UploadTask();
-                Toast.makeText(getApplicationContext(),"Stating to Upload",Toast.LENGTH_LONG).show();
-                up1.execute();
+
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    public void startRecording()
+    {
+        File mediaFile = new
+                File(Environment.getExternalStorageDirectory().getAbsolutePath()
+                + "/myvideo.mp4");
+        StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+        StrictMode.setVmPolicy(builder.build());
+
+        boolean isFlashAvailable = getApplicationContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
+
+        if(!isFlashAvailable) {
+            Toast.makeText(getApplicationContext(), "error flash", Toast.LENGTH_LONG).show();
+        }
+
+        mCameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+
+        try {
+            mCameraId = mCameraManager.getCameraIdList()[0];
+        } catch (CameraAccessException e){
+            e.printStackTrace();
+        }
+
+        try {
+            mCameraManager.setTorchMode(mCameraId,  true);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+
+        fileUri = Uri.fromFile(mediaFile);
+        Intent intent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
+        intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT,45);
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, fileUri);
+        startActivityForResult(intent, VIDEO_CAPTURE);
+    }
+
+    private boolean hasCamera() {
+        if (getPackageManager().hasSystemFeature(
+                PackageManager.FEATURE_CAMERA_ANY)){
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    protected void onActivityResult(int requestCode,
+                                    int resultCode, Intent data) {
+
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == VIDEO_CAPTURE) {
+            if (resultCode == RESULT_OK) {
+                Toast.makeText(this, "Video has been saved" , Toast.LENGTH_LONG).show();
+                VideoView vv = (VideoView) findViewById(R.id.videoView);
+                vv.setVideoURI(fileUri);
+                vv.start();
+            } else if (resultCode == RESULT_CANCELED) {
+                Toast.makeText(this, "Video recording cancelled.",
+                        Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(this, "Failed to record video",
+                        Toast.LENGTH_LONG).show();
             }
-        });
+        }
     }
 }

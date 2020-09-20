@@ -59,7 +59,7 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/editText1"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="78dp"
+        android:layout_marginTop="80dp"
         android:text="Add to database" />
 
     <EditText
