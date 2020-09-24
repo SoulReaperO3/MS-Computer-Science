@@ -3,8 +3,10 @@ package com.example.symmonitor;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraManager;
@@ -29,6 +31,8 @@ public class MainActivity extends AppCompatActivity {
     private Uri fileUri;
     private String mCameraId;
     private CameraManager mCameraManager;
+    private RespRateReceiver respRateReceiver;
+    int respRate = 0, heartRate = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
         Button measureHeartRateButton = (Button) findViewById(R.id.measureHeartRate);
         Button measureRespRateButton = (Button) findViewById(R.id.measureRespRate);
 
-        if(!hasCamera()){
+        if (!hasCamera()) {
             measureHeartRateButton.setEnabled(false);
         }
 
@@ -60,8 +64,15 @@ public class MainActivity extends AppCompatActivity {
         measureRespRateButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-               Intent startSenseService = new Intent(MainActivity.this, AccelSensorHandler.class);
-               startService(startSenseService);
+                //Register BroadcastReceiver
+                //to receive event from our service
+                respRateReceiver = new RespRateReceiver();
+                IntentFilter intentFilter = new IntentFilter();
+                intentFilter.addAction(AccelSensorHandler.CALC_RESP_RATE);
+                registerReceiver(respRateReceiver, intentFilter);
+
+                Intent startSenseService = new Intent(MainActivity.this, AccelSensorHandler.class);
+                startService(startSenseService);
             }
         });
 
@@ -70,6 +81,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 Intent startSymptomLogging = new Intent(MainActivity.this, SymptomLoggingPage.class);
+                startSymptomLogging.putExtra("heartRate", heartRate);
+                startSymptomLogging.putExtra("respRate", respRate);
                 startActivity(startSymptomLogging);
             }
         });
@@ -78,8 +91,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.M)
-    public void startRecording()
-    {
+    public void startRecording() {
         File mediaFile = new
                 File(Environment.getExternalStorageDirectory().getAbsolutePath()
                 + "/myvideo.mp4");
@@ -88,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
 
         boolean isFlashAvailable = getApplicationContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
 
-        if(!isFlashAvailable) {
+        if (!isFlashAvailable) {
             Toast.makeText(getApplicationContext(), "error flash", Toast.LENGTH_LONG).show();
         }
 
@@ -96,26 +108,26 @@ public class MainActivity extends AppCompatActivity {
 
         try {
             mCameraId = mCameraManager.getCameraIdList()[0];
-        } catch (CameraAccessException e){
+        } catch (CameraAccessException e) {
             e.printStackTrace();
         }
 
         try {
-            mCameraManager.setTorchMode(mCameraId,  true);
+            mCameraManager.setTorchMode(mCameraId, true);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
 
         fileUri = Uri.fromFile(mediaFile);
         Intent intent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
-        intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT,45);
+        intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 45);
         intent.putExtra(MediaStore.EXTRA_OUTPUT, fileUri);
         startActivityForResult(intent, VIDEO_CAPTURE);
     }
 
     private boolean hasCamera() {
         if (getPackageManager().hasSystemFeature(
-                PackageManager.FEATURE_CAMERA_ANY)){
+                PackageManager.FEATURE_CAMERA_ANY)) {
             return true;
         } else {
             return false;
@@ -128,7 +140,7 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == VIDEO_CAPTURE) {
             if (resultCode == RESULT_OK) {
-                Toast.makeText(this, "Video has been saved" , Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Video has been saved", Toast.LENGTH_LONG).show();
                 VideoView vv = (VideoView) findViewById(R.id.videoView);
                 vv.setVideoURI(fileUri);
                 vv.start();
@@ -139,6 +151,20 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "Failed to record video",
                         Toast.LENGTH_LONG).show();
             }
+        }
+    }
+
+    private class RespRateReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context arg0, Intent arg1) {
+            // TODO Auto-generated method stub
+
+            respRate = arg1.getIntExtra("RESP_RATE_RETURNED", 0);
+            unregisterReceiver(respRateReceiver);
+            TextView respRateTextView = (TextView) findViewById(R.id.respRateTextView);
+            respRateTextView.setText(String.valueOf(respRate) + " breaths per minute");
+
         }
     }
 }
