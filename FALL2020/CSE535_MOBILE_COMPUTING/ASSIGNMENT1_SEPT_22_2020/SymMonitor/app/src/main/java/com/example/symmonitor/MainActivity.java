@@ -8,6 +8,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraManager;
 import android.net.Uri;
@@ -23,7 +25,16 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
 
+import org.bytedeco.javacv.AndroidFrameConverter;
+import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.Frame;
+import org.bytedeco.javacv.FrameGrabber;
+
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -95,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
         File mediaFile = new
                 File(Environment.getExternalStorageDirectory().getAbsolutePath()
                 + "/myvideo.mp4");
+
         StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
         StrictMode.setVmPolicy(builder.build());
 
@@ -120,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
 
         fileUri = Uri.fromFile(mediaFile);
         Intent intent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
-        intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 45);
+        intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 15);
         intent.putExtra(MediaStore.EXTRA_OUTPUT, fileUri);
         startActivityForResult(intent, VIDEO_CAPTURE);
     }
@@ -144,6 +156,11 @@ public class MainActivity extends AppCompatActivity {
                 VideoView vv = (VideoView) findViewById(R.id.videoView);
                 vv.setVideoURI(fileUri);
                 vv.start();
+                Thread thread = new Thread(new CalcHeartRateThread());
+                thread.start();
+//                Intent startHeartSenseService = new Intent(MainActivity.this, HeartSenseService.class);
+//                startService(startHeartSenseService);
+
             } else if (resultCode == RESULT_CANCELED) {
                 Toast.makeText(this, "Video recording cancelled.",
                         Toast.LENGTH_LONG).show();
@@ -167,4 +184,127 @@ public class MainActivity extends AppCompatActivity {
 
         }
     }
+
+    public class CalcHeartRateThread implements Runnable {
+
+        @RequiresApi(api = Build.VERSION_CODES.O)
+        public void run(){
+            try {
+
+                FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(Environment.getExternalStorageDirectory().getAbsolutePath() + "/myvideo.mp4");
+                AndroidFrameConverter converterToBitmap = new AndroidFrameConverter();
+
+                grabber.start();
+                int frameCount = 0;
+                List<Bitmap> bitmaps = new ArrayList<Bitmap>();
+                for(frameCount = 0; frameCount <grabber.getLengthInFrames(); frameCount++) {
+                    Frame nthFrame = grabber.grabImage();
+                    Bitmap bmp = converterToBitmap.convert(nthFrame);
+                    Bitmap resizebitmap = Bitmap.createBitmap(bmp,
+                            bmp.getWidth() / 2, bmp.getHeight() / 2, 60, 60);
+                    bitmaps.add(resizebitmap);
+                    System.out.println("Frame count: " + frameCount);
+
+                }
+                int avgRedCountPerFrame = 0;
+                int avgRedCount = 0;
+                List<Double> redIntensity = new ArrayList<Double>();
+                for (Bitmap bitmap: bitmaps){
+                    int redCount = 0;
+                    for (int i = 0; i < bitmap.getWidth(); i++){
+                        for (int j = 0; j < bitmap.getHeight(); j++){
+                            int pixel = bitmap.getPixel(i,j);
+                            redCount += Color.red(pixel);
+                        }
+                    }
+                    avgRedCountPerFrame += redCount/3600;
+                    redIntensity.add((double) (redCount/3600));
+                }
+                avgRedCount = avgRedCountPerFrame / frameCount;
+                File output = new File(Environment.getExternalStorageDirectory().getPath()+"/heartRateRedIntensity.csv");
+                FileWriter dataOutput = null;
+                try {
+                    dataOutput = new FileWriter(output);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                for(Double i: redIntensity) {
+                    try {
+                        dataOutput.append(i+"\n");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                try {
+                    dataOutput.flush();
+                    dataOutput.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                final int finalFrameCount = frameCount;
+                final int finalAvgRedCount = avgRedCount;
+                for(int i = 0, j=40; j<redIntensity.size(); i++,j++) {
+                    float sum = 0;
+                    for(int k=i; k<j; k++){
+                        sum += redIntensity.get(k);
+                    }
+                    redIntensity.set(i, (double) (sum / 40));
+                }
+                File output2 = new File(Environment.getExternalStorageDirectory().getPath()+"/heartRateRedIntensitySmoothed.csv");
+                FileWriter dataOutput2 = null;
+                try {
+                    dataOutput2 = new FileWriter(output2);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                for(Double i: redIntensity) {
+                    try {
+                        dataOutput2.append(i+"\n");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                try {
+                    dataOutput2.flush();
+                    dataOutput2.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+
+                List<Integer> ext = new ArrayList<Integer>();
+                for (int i = 0; i<redIntensity.size()-43; i++) {
+                    if ((redIntensity.get(i + 1) - redIntensity.get(i))*(redIntensity.get(i + 2) - redIntensity.get(i + 1)) <= 0) { // changed sign?
+                        ext.add(i+1);
+                    }
+                }
+
+                heartRate = ext.size() * 2;
+
+                runOnUiThread(new Runnable() {
+
+                    @Override
+                    public void run() {
+
+                        TextView heartRateTextView = (TextView) findViewById(R.id.heartRateTextView);
+                        heartRateTextView.setText(String.valueOf(heartRate) + " beats per minute");
+                        Toast.makeText(getApplicationContext(),"Beats per minute: " + String.valueOf(heartRate),Toast.LENGTH_LONG).show();
+
+                    }
+                });
+
+                //Toast.makeText(getApplicationContext(),"No of frames from video: " + String.valueOf(frameCount),Toast.LENGTH_LONG).show();
+            } catch (FrameGrabber.Exception e) {
+                e.printStackTrace();
+            }
+
+
+        }
+    }
+
+
 }

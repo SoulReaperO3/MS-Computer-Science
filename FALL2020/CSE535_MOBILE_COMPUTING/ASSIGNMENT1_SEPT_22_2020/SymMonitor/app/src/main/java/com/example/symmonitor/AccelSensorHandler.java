@@ -95,51 +95,6 @@ public class AccelSensorHandler extends Service implements SensorEventListener {
 
         intent.putExtra("RESP_RATE_RETURNED", respRate);
         sendBroadcast(intent);
-        //        TextView respRateTextView = (TextView) findViewById(R.id.respRateTextView);
-//        respRateTextView.setText("");
-
-
-//        File output = new File(Environment.getExternalStorageDirectory().getPath()+"/CSVBreathe.csv");
-//        FileWriter dataOutput = null;
-//        try {
-//            dataOutput = new FileWriter(output);
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//
-//        for(int i=0;  i<450; i++) {
-//            try {
-//                dataOutput.append(accelValuesX[i]+"\n");
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }
-//
-//        for(int i=0;  i<450; i++) {
-//            try {
-//                dataOutput.append(accelValuesY[i]+"\n");
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }
-//
-//        for(int i=0;  i<450; i++) {
-//            try {
-//                dataOutput.append(accelValuesZ[i]+"\n");
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }
-//
-//        try {
-//            dataOutput.flush();
-//            dataOutput.close();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-
-        Toast.makeText(AccelSensorHandler.this, "Done Writing", Toast.LENGTH_LONG).show();
-
 
     }
 
