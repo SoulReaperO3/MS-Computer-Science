@@ -1,0 +1,157 @@
+\documentclass[12pt, a4paper]{article}
+\newcommand\tab[1][1cm]{\hspace*{#1}}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{titlesec}
+\usepackage{bm}
+
+\titleformat{\subsection}[runin]
+{\normalfont\large\bfseries}{\thesubsection}{1em}{}
+\begin{document}
+
+\title {\textbf {CSE 551
+\\Assignment 2}}
+\author {Arun Kumar Kumarasamy}
+\date{\today}
+\maketitle
+
+\section*{Q1 Solution:}
+\textbf{Algorithm for finding second smallest number:}
+\\Recursively find the smallest value and return back a list of numbers that were directly compared with the smallest number. Now find the smallest from this list. \\
+\textbf{Algorithm:}
+\\\textbf{FindSecondSmallest(InputArray[ ]):}
+\\\textbf{begin}
+\\\tab \{min, ComparisonsMade\} $\gets$ FindSmallest(0,InputArray.size(), InputArray[ ]);
+\\\tab \{secondMin, ComparisonsMade\} $\gets$ FindSmallest(0,ComparisonsMade.size(), ComparisonsMade[]);
+\\\tab \textbf{return} secondMin
+\\\textbf{end}
+\\
+\\\textbf{FindSmallest(i, j, InputArray[ ]):}
+\\\textbf{begin}
+\\\tab if ( i == j):\tab \tab \tab \#recursion base condition
+\\\tab\tab min $\gets$ InputArray[i];
+\\\tab\tab comparisionsMade = new Array[ ];
+\\\tab\tab return \{min, comparisonsMade[ ]\}
+\\
+\\\tab \{min1,comparisonsMade1\} $\gets$ FindSmallest(i,i+(j-i)/2,InputArray[ ]);
+\\\tab \{min2,comparisonsMade2\} $\gets$ FindSmallest(i+(j-i)/2,j,InputArray[ ]);
+\\
+\\\tab if ( min1 $<$ min2):
+\\\tab \tab min $\gets$ min1;
+\\\tab \tab comparisonsMade1.add(min2);
+\\\tab \tab \textbf{return} \{ min, comparisonsMade1\}
+\\\tab else:
+\\\tab \tab min $\gets$ min2;
+\\\tab \tab comparisonsMade2.add(min1);
+\\\tab \tab \textbf{return} \{ min, comparisonsMade2\}
+\\\textbf{end}
+\\
+\\The above algorithm finds the smallest element in the first FindSmallest call, which along with the smallest number returns the list of numbers that the smallest number was compared with. 
+\\Since all the numbers are compared in the first call, \\we have $\bm{N-1}$ comparisions ------------------- (1)
+\\Now, Since the FindSmallest returns a list of elements to which the smallest was compared with, and since the FindSmallest function is a recursive function with total number of recursive calls: $\bm{ \log_{2}(N)} $, each recursive call makes only one comparision. So the maximum no. of elements that can be added to the "comparisonsMade" list is $\bm{ \log_{2}(N)} $.
+\\The second call to FindSmallest would find the smallest in the "comparisonsMade" list which would make $\bm{ \log_{2}(N) - 1} $ comparisions. ------------------(2)
+\\Hence the total number of comparisons made by this algorithm is $(1) + (2)$, which is $$ {N-1 + \log_{2}(N) - 1} $$ $$ \bm{N + \log_{2}(N) - 2} $$
+
+
+
+
+\section*{Q2 Solution:}
+we know that Conventional matrix multiplication method makes 27 multiplications.
+\\By using Strassen's algorithm for matrix multiplication, we can get the computation time to   $O(n^{2..81})$
+\\Strassen's algorithm is used for matrices of power of 2, i.e., a recursive approach to multiply any 2x2 matrices with recursive equation: $$ T(n) = 7 T(n/2) + O(n^{2}) $$ 
+\\Since we need the number of multiplications for a 3x3 matrix multiplication, we have  $$ T(n) = k T(n/3) + O(n^{2}) $$ where k is the no. of mulitiplication
+\\So, from the above recurrence relation, we need to solve for k such that $$O(n^{\log_{3} (k)}) = O(n^{2.81})$$
+$$n^{\log_{3} (k)} = n^{2.81}$$
+$$\log_{3} (k) =2.81$$
+$$k=21.91344$$
+the largest k value for 3x3 matrix for which the computation time is approximately equal to $O(n^{2.81})$ is \textbf{k = 21}
+\\Doing the same for 4x4 matrices, $$ T(n) = k T(n/4) + O(n^{2}) $$ 
+Equating,
+ $$O(n^{\log_{4} (k)}) = O(n^{2.81})$$
+$$n^{\log_{4} (k)} = n^{2.81}$$
+$$\log_{4} (k) =2.81$$
+$$k=49.18$$
+Hence for 4x4 matrices, the \textbf{no.of multiplications = 49}
+
+\section*{Q3 Solution:}
+Proof by Induction
+\\We need to prove that the given recurrence has the following solution, $$ T(n) = 3 kn^{\log_{2}(3)} - 2kn $$
+given: n is a power of 2 so let $ n = 2 $
+Substituting it in the given equation, we get $$ T(2) = 3T(2/2) + 2k $$
+$$ T(2) = 3T(1) + 2k $$ given, $T(1) = k$ hence, $$ T(2) = 5k $$
+Substituting the same n=2 in solution equation, we get, $$T(n) = 3k 2^{\log_{2}(3)} - 2k2 $$
+$$ T(n) = 5k$$
+Hence, solution holds for the base case (n=2)
+\\Now let $n = 2n$
+\\Substituting $n = 2n$ we get,
+$$ T(2n) = 3T(2n/2) + k(2n) $$
+$$ T(2n) = 3T(n) + k(2n) $$
+By substituting $ T(n) = 3 kn^{\log_{2}(3)} - 2kn $, we get, 
+$$ T(2n) = 3(3 kn^{\log_{2}(3)} - 2kn) + k(2n) $$
+$$ T(2n) = 3 * 3 kn^{\log_{2}(3)} - 6kn + 2kn) $$
+$$ T(2n) = 3 * 3 kn^{\log_{2}(3)} - 4kn $$
+Substituting 3 with $2^{\log_{2}(3)}$ , we get,
+$$ T(2n) = 3 * (2^{\log_{2}(3)}) kn^{\log_{2}(3)} - 2k(2n) $$
+$$ T(\bm{2n}) = 3k (\bm{2n})^{\log_{2}(3)} - 2k(\bm{2n}) $$
+
+
+Hence the above equation is equal to $ T(n) = 3 kn^{\log_{2}(3)} - 2kn $ where $n = 2n$
+\\\textbf{Hence proved.}
+
+
+
+
+\section*{Q4 Solution:}
+Let's represent the matrix as 
+ \[
+   V=
+  \left[ {\begin{array}{cc}
+   v1 & v2 \\
+   v3 & v4 \\
+  \end{array} } \right]
+\]
+
+ \[
+   W=
+  \left[ {\begin{array}{cc}
+   w1 & w2 \\
+   w3 & w4 \\
+  \end{array} } \right]
+\]
+V x W =  \[
+   C=
+  \left[ {\begin{array}{cc}
+   c1 & c2 \\
+   c3 & c4 \\
+  \end{array} } \right]
+\]
+Regular matrix multiplication would multiply it this way, 
+$$c1 = v1w1+v2w3$$
+$$c2 = v1w2+v2w3$$
+$$c3 = v3w1+v3w3$$
+$$c4 = v3w2+v4w4$$
+
+Lets consider two vectors and their vector product
+ \[
+   V=
+  \left[ {\begin{array}{cc}
+   v1 & v2\\
+  \end{array} } \right]
+\]
+ \[
+   W=
+  \left[ {\begin{array}{cc}
+   w1 \\
+   w3 \\
+  \end{array} } \right]
+\]
+Applying the vector product formula: we get,
+$$VW = (v1+w3) \times (v2+w1) - (v2 \times v1) - (w3 \times w1)$$which happens to be c1 (Another representation of c1)
+
+Similarly, applying the same formula for other vectors, we can represent c1, c2, c3 and c4 as following: 
+$$c1 = (v1+w3) \times (v2+w1) - (v2 \times v1) - (w3 \times w1)$$
+$$c2 = (v1+w4) \times (v2+w2) - (v2 \times v1) - (w4 \times w2)$$
+$$c3 = (v3+w3) \times (v4+w1) - (v3 \times v4) - (w3 \times w1)$$
+$$c4 = (v3+w4) \times (v2+w2) - (v3 \times v4) - (w4 \times w2)$$
+
+This way we reduce the number of multiplication required, by computing the later part of the formula once and using it many times.
+\end{document}

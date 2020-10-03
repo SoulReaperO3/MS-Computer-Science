@@ -56,7 +56,6 @@ public class MainActivity extends AppCompatActivity {
         respRateTextView.setText("");
 
         Button symptomsButton = (Button) findViewById(R.id.symptoms);
-        Button uploadSignsButton = (Button) findViewById(R.id.uploadSigns);
         Button measureHeartRateButton = (Button) findViewById(R.id.measureHeartRate);
         Button measureRespRateButton = (Button) findViewById(R.id.measureRespRate);
 
@@ -200,9 +199,12 @@ public class MainActivity extends AppCompatActivity {
                 for(frameCount = 0; frameCount <grabber.getLengthInFrames(); frameCount++) {
                     Frame nthFrame = grabber.grabImage();
                     Bitmap bmp = converterToBitmap.convert(nthFrame);
-                    Bitmap resizebitmap = Bitmap.createBitmap(bmp,
-                            bmp.getWidth() / 2, bmp.getHeight() / 2, 60, 60);
-                    bitmaps.add(resizebitmap);
+                    if(bmp != null){
+                        Bitmap resizebitmap = Bitmap.createBitmap(bmp,
+                                bmp.getWidth() / 2, bmp.getHeight() / 2, 60, 60);
+                        bitmaps.add(resizebitmap);
+                    }
+
                     System.out.println("Frame count: " + frameCount);
 
                 }
@@ -245,12 +247,12 @@ public class MainActivity extends AppCompatActivity {
                 }
                 final int finalFrameCount = frameCount;
                 final int finalAvgRedCount = avgRedCount;
-                for(int i = 0, j=40; j<redIntensity.size(); i++,j++) {
+                for(int i = 0, j=35; j<redIntensity.size(); i++,j++) {
                     float sum = 0;
                     for(int k=i; k<j; k++){
                         sum += redIntensity.get(k);
                     }
-                    redIntensity.set(i, (double) (sum / 40));
+                    redIntensity.set(i, (double) (sum / 35));
                 }
                 File output2 = new File(Environment.getExternalStorageDirectory().getPath()+"/heartRateRedIntensitySmoothed.csv");
                 FileWriter dataOutput2 = null;
@@ -277,13 +279,18 @@ public class MainActivity extends AppCompatActivity {
 
 
                 List<Integer> ext = new ArrayList<Integer>();
-                for (int i = 0; i<redIntensity.size()-43; i++) {
+                for (int i = 0; i<redIntensity.size()-38; i++) {
                     if ((redIntensity.get(i + 1) - redIntensity.get(i))*(redIntensity.get(i + 2) - redIntensity.get(i + 1)) <= 0) { // changed sign?
                         ext.add(i+1);
                     }
                 }
 
-                heartRate = ext.size() * 2;
+                int heartRateSmoothing = 0;
+                for (int i = 0; i<ext.size()-1; i++) {
+                    if(ext.get(i)/10 != ext.get(i++)) heartRateSmoothing++;
+                }
+
+                heartRate = heartRateSmoothing * 2;
 
                 runOnUiThread(new Runnable() {
 
