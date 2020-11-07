@@ -1,11 +1,16 @@
 package com.example.symmonitor;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Context;
 import android.content.Intent;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.View;
@@ -17,15 +22,25 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.loopj.android.http.*;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+
+import cz.msebera.android.httpclient.Header;
+
 public class SymptomLoggingPage extends AppCompatActivity implements AdapterView.OnItemSelectedListener {
     String[] Symptoms = {"Nausea", "Headache", "Diarrhea", "Soar Throat", "Fever", "Muscle Ache", "Loss of Smell or Taste", "Cough", "Shortness of Breath", "Feeling Tired"};
     float[] symptomRatingArray;
     RatingBar ratingBar;
     int respRate, heartRate;
     SQLiteDatabase db;
+    LocationManager locationManager;
+    Double latitude,longitude;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        getLocation();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_symptom_logging_page);
 
@@ -76,7 +91,9 @@ public class SymptomLoggingPage extends AppCompatActivity implements AdapterView
                                 + " Loss_of_Smell_or_Taste numeric, "
                                 + " Cough numeric, "
                                 + " Shortness_of_Breath numeric, "
-                                + " Feeling_Tired numeric ); " );
+                                + " Feeling_Tired numeric,"
+                                + " Latitude_GPS numeric,"
+                                + " Longitude_GPS numeric); " );
 
                         db.setTransactionSuccessful(); //commit your changes
                     }
@@ -91,16 +108,19 @@ public class SymptomLoggingPage extends AppCompatActivity implements AdapterView
                     Toast.makeText(SymptomLoggingPage.this, e.getMessage(), Toast.LENGTH_LONG).show();
                 }
                 try {
+                    //,Latitude_GPS,Longitude_GPS
+                    //'"+latitude+"','"+longitude +"'
                     //perform your database operations here ...
                     db.execSQL( "insert into Kumarasamy(HeartRate, " +
                             "RespiratoryRate,Nausea,Headache,Diarrhea,Soar_Throat," +
                             "Fever,Muscle_Ache,Loss_of_Smell_or_Taste,Cough," +
-                            "Shortness_of_Breath,Feeling_Tired) values ('"+heartRate+"'," +
+                            "Shortness_of_Breath,Feeling_Tired,Latitude_GPS,Longitude_GPS) values ('"+heartRate+"'," +
                             "'"+respRate+"','"+symptomRatingArray[0]+"','"+symptomRatingArray[1]+
                             "','"+symptomRatingArray[2]+"','"+symptomRatingArray[3]+"'," +
                             "'"+symptomRatingArray[4]+"','"+symptomRatingArray[5]+"'," +
                             "'"+symptomRatingArray[6]+"','"+symptomRatingArray[7]+"'," +
-                            " '"+symptomRatingArray[8]+"','"+symptomRatingArray[9] +"' );" );
+                            "'"+symptomRatingArray[6]+"','"+symptomRatingArray[7]+"'," +
+                            " '"+latitude+"','"+longitude+"' );" );
                     //db.setTransactionSuccessful(); //commit your changes
                     Toast.makeText(SymptomLoggingPage.this, "Successfully stored in Database!", Toast.LENGTH_LONG).show();
 
@@ -108,6 +128,34 @@ public class SymptomLoggingPage extends AppCompatActivity implements AdapterView
                 catch (SQLiteException e) {
                     //report problem
                 }
+                String url = "http://192.168.0.182:8000/upload/";
+                // Creates a Async client.
+                AsyncHttpClient client = new AsyncHttpClient();
+                //New File
+                File files = new File(Environment.getExternalStorageDirectory()+"/databaseFolder/Kumarasamy");
+                RequestParams params = new RequestParams();
+                try {
+                    //"photos" is Name of the field to identify file on server
+                    params.put("file", files);
+                } catch (FileNotFoundException e) {
+                    //TODO: Handle error
+                    e.printStackTrace();
+                }
+//                //TODO: Reaming body with id "property". prepareJson converts property class to Json string. Replace this with with your own method
+//                params.put("property",prepareJson(property));
+                client.post(SymptomLoggingPage.this, url, params, new AsyncHttpResponseHandler() {
+                    @Override
+                    public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
+                        System.out.print("Failed..");
+                    }
+
+                    @Override
+                    public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+                        System.out.print("Success..");
+                    }
+                });
+
+
 
             }
         });
@@ -129,8 +177,40 @@ public class SymptomLoggingPage extends AppCompatActivity implements AdapterView
     }
 
     @Override
-    public void onNothingSelected(AdapterView<?> arg0) {
-        // TODO Auto-generated method stub
+    public void onNothingSelected(AdapterView<?> adapterView) {
 
+    }
+    void getLocation() {
+        try {
+            locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            MyLocationListener locationListener = new MyLocationListener();
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000L, 5f, locationListener);
+        }
+        catch(SecurityException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private class MyLocationListener implements LocationListener {
+
+
+        public void onLocationChanged(Location location) {
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+
+            locationManager.removeUpdates(this);
+            Toast.makeText(SymptomLoggingPage.this, "Latitude: "+ Double.toString(latitude) + " Longitude: "+ Double.toString(longitude), Toast.LENGTH_SHORT).show();
+
+        }
+
+        public void onStatusChanged(String s, int i, Bundle bundle) {
+        }
+
+        public void onProviderEnabled(String s) {
+        }
+
+        public void onProviderDisabled(String s) {
+            Toast.makeText(SymptomLoggingPage.this, "Please Enable GPS and Internet", Toast.LENGTH_SHORT).show();
+        }
     }
 }
